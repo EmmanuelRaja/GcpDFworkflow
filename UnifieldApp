@@ -1,0 +1,65 @@
+package com.example.dataflow.io;
+
+import com.example.dataflow.models.Client;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.kafka.KafkaIO;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+public class SourceReader {
+    public static PCollection<Client> readData(Pipeline pipeline, boolean isBatch) {
+        if (isBatch) {
+            // Batch processing from Cloud Storage CSV files
+            return pipeline.apply("Read CSV Files", TextIO.read().from("gs://your-bucket/*.csv"))
+                    .apply("Parse CSV", ParDo.of(new ParseCSVLine()));
+        } else {
+            // Streaming processing from Kafka
+            return pipeline.apply("Read from Kafka", KafkaIO.<String, String>read()
+                    .withBootstrapServers("your-kafka-bootstrap-server")
+                    .withTopic("client-updates")
+                    .withKeyDeserializer(StringDeserializer.class)
+                    .withValueDeserializer(StringDeserializer.class)
+                    .withoutMetadata())
+                    .apply("Extract Values", org.apache.beam.sdk.transforms.Values.create())
+                    .apply("Parse Kafka Message", ParDo.of(new ParseKafkaMessage()));
+        }
+    }
+
+    // CSV Parsing Function
+    static class ParseCSVLine extends DoFn<String, Client> {
+        @ProcessElement
+        public void processElement(@Element String line, OutputReceiver<Client> out) {
+            String[] fields = line.split(",");
+            Client client = new Client();
+            client.setClientId(fields[0]);
+            client.setName(fields[1]);
+            client.setAddress(fields[2]);
+            client.setCountryCode(fields[3]);
+            client.setAge(Integer.parseInt(fields[4]));
+
+            if (DataValidator.validate(client)) {
+                out.output(client);
+            }
+        }
+    }
+
+    // Kafka Message Parsing Function
+    static class ParseKafkaMessage extends DoFn<String, Client> {
+        @ProcessElement
+        public void processElement(@Element String message, OutputReceiver<Client> out) {
+            // Example parsing logic for Kafka message
+            Client client = parseMessageToClient(message);
+            if (DataValidator.validate(client)) {
+                out.output(client);
+            }
+        }
+
+        private Client parseMessageToClient(String message) {
+            // Parse message string to Client object (this is just an example)
+            return new Client();
+        }
+    }
+}

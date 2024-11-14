@@ -1,0 +1,19 @@
+image: google/cloud-sdk:latest
+
+pipelines:
+  default:
+    - step:
+        name: Build and Test
+        caches:
+          - maven
+        script:
+          - mvn clean install  # Build and test your project
+
+    - step:
+        name: Deploy to Dataflow
+        deployment: production
+        script:
+          - gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+          - gcloud config set project your-project-id
+          - mvn compile exec:java -Dexec.mainClass=com.example.dataflow.UnifiedPipeline \
+              -Dexec.args="--project=your-project-id --runner=DataflowRunner --isBatch=false"

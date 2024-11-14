@@ -1,0 +1,27 @@
+package com.example.dataflow;
+
+import com.example.dataflow.config.CustomPipelineOptions;
+import com.example.dataflow.io.SourceReader;
+import com.example.dataflow.io.SpannerWriter;
+import com.example.dataflow.models.Client;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.values.PCollection;
+
+public class UnifiedPipeline {
+    public static void main(String[] args) {
+        CustomPipelineOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CustomPipelineOptions.class);
+        Pipeline pipeline = Pipeline.create(options);
+
+        // Determine batch or streaming mode
+        boolean isBatch = options.isBatch();
+
+        // Read data from either batch or streaming source
+        PCollection<Client> clients = SourceReader.readData(pipeline, isBatch);
+
+        // Write to Cloud Spanner
+        SpannerWriter.writeToSpanner(clients);
+
+        pipeline.run().waitUntilFinish();
+    }
+}

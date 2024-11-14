@@ -1,0 +1,15 @@
+package com.example.dataflow.io;
+
+import com.example.dataflow.models.Client;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.values.PCollection;
+
+public class SpannerWriter {
+    public static void writeToSpanner(PCollection<Client> clients) {
+        clients.apply("Write to Spanner", SpannerIO.write()
+                .withProjectId("your-project-id")
+                .withInstanceId("your-instance-id")
+                .withDatabaseId("your-database-id")
+                .withSchema(SpannerIO.write().getSchema())); // Adjust schema as needed
+    }
+}
